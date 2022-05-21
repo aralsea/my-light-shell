@@ -4,8 +4,40 @@
 #include <sysexits.h>
 #include <unistd.h>
 #define LSH_RL_BUFFER_SIZE 1024
-#define LSH_TOK_BUFFFER_SIZE 64
-#define LSH_TOK_DELIM " \t\r\n\a"
+int lsh_cd(char **args);
+int lsh_help(char **args);
+int lsh_exit(char **args);
+
+char *builtin_str[] = {"cd", "help", "exit"};
+int (*builtin_func[])(char **) = {
+    &lsh_cd, &lsh_help,
+    &lsh_exit};  //関数ポインタの配列，「関数の集合」みたいなものを定義しようとすると自然とこれを使うことになる？
+int lsh_num_builtins(void) {
+    return sizeof(builtin_str) / sizeof(char *);
+}  //ビルトイン関数がいくつあるか
+
+int lsh_cd(char **args) {
+    if (args[1] == NULL) {
+        // cdの引数がないとき
+        fprintf(stderr, "lsh: expected argument to \"cd\"\n");
+    } else {
+        if (chdir(args[1]) != 0) {
+            perror("lsh");
+        }
+    }
+    return 1;
+}
+
+int lsh_help(char **args) {
+    printf("The following are built in");
+    for (int i = 0; i < lsh_num_builtins(); i++) {
+        printf(" %s\n", builtin_str[i]);
+    }
+
+    return 1;
+}
+
+int lsh_exit(char **args) { return 0; }
 char *lsh_read_line(void) {
     //文字列を読み込む関数，ただし何文字入力されるかわからないので「はじめにある程度のメモリ確保」→「溢れたらメモリをさらに確保」という手順を踏む
 
@@ -49,6 +81,8 @@ char *lsh_read_line(void) {
     return buffer;
 }
 
+#define LSH_TOK_BUFFFER_SIZE 64
+#define LSH_TOK_DELIM " \t\r\n\a"
 char **lsh_split_line(char *line) {
     int buffer_size = LSH_TOK_BUFFFER_SIZE;
     char **tokens = malloc(sizeof(char *) * buffer_size);
@@ -122,6 +156,19 @@ int lsh_launch(char **args) {
     return 1;
 }
 
+int lsh_execute(char **args) {
+    if (args[0] == NULL) {
+        return 1;
+    }
+
+    for (int i = 0; i < lsh_num_builtins(); i++) {
+        if (strcmp(args[0], builtin_str[i]) == 0) {
+            return (*builtin_func[i])(args);
+        }
+    }
+
+    return lsh_launch(args);
+}
 void loop_lsh(void) {
     char *line;
     char **args;
@@ -131,9 +178,9 @@ void loop_lsh(void) {
         printf(">");
         line = lsh_read_line();
         args = lsh_split_line(line);
-        print_parsed_line(args);
-        // status = lsh_execute(args);
-    } while (0);
+        // print_parsed_line(args);
+        status = lsh_execute(args);
+    } while (status);
 }
 int main(int argc, char **argv) {
     loop_lsh();
