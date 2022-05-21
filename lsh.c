@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sysexits.h>
 #define LSH_RL_BUFFER_SIZE 1024
-
+#define LSH_TOK_BUFFFER_SIZE 64
+#define LSH_TOK_DELIM " \t\r\n\a"
 char *lsh_read_line(void) {
     //文字列を読み込む関数，ただし何文字入力されるかわからないので「はじめにある程度のメモリ確保」→「溢れたらメモリをさらに確保」という手順を踏む
 
@@ -30,6 +32,7 @@ char *lsh_read_line(void) {
             return buffer;
         }
 
+        buffer[position] = c;
         position++;
 
         //確保したメモリ範囲を超えた場合，さらにメモリを追加
@@ -45,6 +48,43 @@ char *lsh_read_line(void) {
     return buffer;
 }
 
+char **lsh_split_line(char *line) {
+    int buffer_size = LSH_TOK_BUFFFER_SIZE;
+    char **tokens = malloc(sizeof(char *) * buffer_size);
+    //メモリ確保に失敗した場合
+    if (!tokens) {
+        fprintf(stderr, "lsh: allocation error\n");
+        exit(EXIT_FAILURE);
+    }
+
+    int position = 0;
+    char *token;
+    token = strtok(line, LSH_TOK_DELIM);
+    while (token != NULL) {
+        tokens[position] = token;
+        position++;
+
+        if (position >= buffer_size) {
+            buffer_size += LSH_RL_BUFFER_SIZE;
+            tokens = realloc(tokens, sizeof(char *) * buffer_size);
+            if (!tokens) {
+                fprintf(stderr, "lsh: allocation error\n");
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        token = strtok(NULL, LSH_TOK_DELIM);
+    }
+    tokens[position] = NULL;
+    return tokens;
+};
+void print_parsed_line(char **args) {
+    int position = 0;
+    while (args[position] != NULL) {
+        printf("%s\n", args[position]);
+        position++;
+    }
+}
 void loop_lsh(void) {
     char *line;
     char **args;
@@ -53,7 +93,8 @@ void loop_lsh(void) {
     do {
         printf(">");
         line = lsh_read_line();
-        // args = lsh_split_line(line);
+        args = lsh_split_line(line);
+        // print_parsed_line(args);
         // status = lsh_execute(args);
     } while (0);
 }
