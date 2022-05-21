@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
+#include <unistd.h>
 #define LSH_RL_BUFFER_SIZE 1024
 #define LSH_TOK_BUFFFER_SIZE 64
 #define LSH_TOK_DELIM " \t\r\n\a"
@@ -79,12 +80,48 @@ char **lsh_split_line(char *line) {
     return tokens;
 };
 void print_parsed_line(char **args) {
+    /*
     int position = 0;
     while (args[position] != NULL) {
         printf("%s\n", args[position]);
         position++;
+    }*/
+
+    while (*args != NULL) {
+        printf("%s\n", *args);
+        args++;
     }
 }
+
+int lsh_launch(char **args) {
+    pid_t pid, wpid;
+    int status;
+
+    pid =
+        fork();  //プロセスをフォークする，つまり今実行しているこのシェルのプロセスをコピーする
+
+    if (pid == 0) {
+        //自分は子プロセス
+
+        // execした上でエラーがあれば出力
+        if (execvp(args[0], args) == -1) {
+            perror("an error occured in the child process");
+        }
+    } else if (pid < 0) {
+        perror("an error occured while forking");
+    } else {
+        //自分は親プロセス（つまり元のシェル），pidには子プロセスのプロセスIDが入っている
+        do {
+            wpid = waitpid(pid, &status, WUNTRACED);
+            // WUNTRACEDオプションは，指定したプロセスが終了ではなく停止（Ctrl+Cとか？）したときにも復帰できるようにする
+            // statusを参照で渡すことで，指定したプロセスがどうなったかの情報が返ってくる
+        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+        //正常終了or停止までwaitpidを繰り返す
+    }
+
+    return 1;
+}
+
 void loop_lsh(void) {
     char *line;
     char **args;
@@ -94,7 +131,7 @@ void loop_lsh(void) {
         printf(">");
         line = lsh_read_line();
         args = lsh_split_line(line);
-        // print_parsed_line(args);
+        print_parsed_line(args);
         // status = lsh_execute(args);
     } while (0);
 }
