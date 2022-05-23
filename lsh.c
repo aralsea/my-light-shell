@@ -3,7 +3,6 @@
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
-#define LSH_RL_BUFFER_SIZE 1024
 int lsh_cd(char **args);
 int lsh_help(char **args);
 int lsh_exit(char **args);
@@ -29,7 +28,7 @@ int lsh_cd(char **args) {
 }
 
 int lsh_help(char **args) {
-    printf("The following are built in");
+    printf("The following are built in\n");
     for (int i = 0; i < lsh_num_builtins(); i++) {
         printf(" %s\n", builtin_str[i]);
     }
@@ -38,6 +37,9 @@ int lsh_help(char **args) {
 }
 
 int lsh_exit(char **args) { return 0; }
+
+#define LSH_RL_BUFFER_SIZE 1024
+
 char *lsh_read_line(void) {
     //文字列を読み込む関数，ただし何文字入力されるかわからないので「はじめにある程度のメモリ確保」→「溢れたらメモリをさらに確保」という手順を踏む
 
@@ -113,6 +115,7 @@ char **lsh_split_line(char *line) {
     tokens[position] = NULL;
     return tokens;
 };
+
 void print_parsed_line(char **args) {
     /*
     int position = 0;
@@ -180,6 +183,9 @@ void loop_lsh(void) {
         args = lsh_split_line(line);
         // print_parsed_line(args);
         status = lsh_execute(args);
+
+        free(line);
+        free(args);
     } while (status);
 }
 int main(int argc, char **argv) {
